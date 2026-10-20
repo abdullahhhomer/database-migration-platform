@@ -1,0 +1,119 @@
+services:
+
+  postgres:
+    image: postgres:17
+    container_name: migration-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    ports:
+      - "${POSTGRES_PORT}:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./source-db/init:/docker-entrypoint-initdb.d
+
+    command:
+      - postgres
+      - -c
+      - wal_level=logical
+      - -c
+      - max_replication_slots=10
+      - -c
+      - max_wal_senders=10
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+
+  redis:
+    image: redis:7-alpine
+    container_name: migration-redis
+    restart: unless-stopped
+
+    ports:
+      - "${REDIS_PORT}:6379"
+
+    volumes:
+      - redis_data:/data
+
+    command: redis-server --appendonly yes
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+
+  transaction-generator:
+    build:
+      context: ./source-db/transaction-generator
+    container_name: migration-transaction-generator
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
+  backend:
+    build:
+      context: ./backend
+    container_name: migration-backend
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+      DATABRICKS_HOST: ${DATABRICKS_HOST}
+      DATABRICKS_TOKEN: ${DATABRICKS_TOKEN}
+      DATABRICKS_HTTP_PATH: ${DATABRICKS_HTTP_PATH}
+      DATABRICKS_CATALOG: ${DATABRICKS_CATALOG}
+      DATABRICKS_SCHEMA: ${DATABRICKS_SCHEMA}
+
+    ports:
+      - "${BACKEND_PORT}:8000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
+  dbt:
+    build:
+      context: ./dbt
+    container_name: migration-dbt
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    volumes:
+      - ./dbt/migration_platform:/app/migration_platform
+
+    working_dir: /app/migration_platform
+
+
+
+volumes:
+  postgres_data:
+  redis_data:
