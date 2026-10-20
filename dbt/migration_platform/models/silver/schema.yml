@@ -1,0 +1,124 @@
+version: 2
+
+models:
+
+  - name: silver_customers
+    description: "Cleaned customer records from the Bronze layer."
+    columns:
+      - name: id
+        tests:
+          - not_null
+          - unique
+
+      - name: email
+        tests:
+          - not_null
+          - unique
+
+  - name: silver_products
+    description: "Cleaned product records from the Bronze layer."
+    columns:
+      - name: id
+        tests:
+          - not_null
+          - unique
+
+      - name: sku
+        tests:
+          - not_null
+          - unique
+
+      - name: price
+        tests:
+          - not_null
+
+  - name: silver_orders
+    description: "Cleaned order records from the Bronze layer."
+    columns:
+      - name: id
+        tests:
+          - not_null
+          - unique
+
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_customers')
+              field: id
+
+  - name: silver_order_items
+    description: "Cleaned order line items with calculated line totals."
+    columns:
+      - name: id
+        tests:
+          - not_null
+          - unique
+
+      - name: order_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_orders')
+              field: id
+
+      - name: product_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_products')
+              field: id
+
+      - name: quantity
+        tests:
+          - not_null
+
+  - name: silver_payments
+    description: "Cleaned payment records."
+    columns:
+      - name: id
+        tests:
+          - not_null
+          - unique
+
+      - name: order_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_orders')
+              field: id
+
+      - name: transaction_ref
+        tests:
+          - not_null
+          - unique
+
+  - name: silver_shipments
+    description: "Cleaned shipment records."
+    columns:
+      - name: id
+        tests:
+          - not_null
+          - unique
+
+      - name: order_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_orders')
+              field: id
+
+  - name: silver_returns
+    description: "Cleaned return records."
+    columns:
+      - name: id
+        tests:
+          - not_null
+          - unique
+
+      - name: order_item_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_order_items')
+              field: id
