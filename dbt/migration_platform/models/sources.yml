@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: bronze
+    catalog: "{{ env_var('DATABRICKS_CATALOG') }}"
+    schema: bronze
+    description: "Raw data migrated from the PostgreSQL source database."
+
+    tables:
+      - name: customers
+      - name: products
+      - name: orders
+      - name: order_items
+      - name: payments
+      - name: shipments
+      - name: returns
