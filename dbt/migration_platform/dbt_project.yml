@@ -1,0 +1,17 @@
+name: migration_platform
+version: "1.0.0"
+config-version: 2
+
+profile: migration_platform
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+models:
+  migration_platform:
+    silver:
+      +materialized: table
+
+    gold:
+      +materialized: table
