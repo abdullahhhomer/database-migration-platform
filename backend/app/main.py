@@ -1,24 +1,48 @@
+import json
+import logging
 import os
+from contextlib import asynccontextmanager
 
 import psycopg2
 from databricks import sql
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
+from app import aws, cutover, dashboard
+from app.config import ALL_TARGETS, configured_targets, databricks_settings, default_workers
+from app.control import ensure_control_schema
+from app.migration import orchestrator
 from app.migration.reader import read_table_batch
 from app.migration.service import migrate_table
 from app.migration.writer import create_table
 from app.migration.writer import insert_rows
 
+from app.validation.validator import run_validation
 from app.validation.validator import validate_counts
 from app.validation.validator import get_validation_history
 from app.validation.validator import get_validation_run
 from app.validation.readiness import get_migration_readiness
 
 
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO"),
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+for _noisy in ("databricks.sql", "databricks.sdk", "urllib3", "botocore"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    ensure_control_schema()
+    orchestrator.mark_interrupted_runs()
+    yield
+
 
 app = FastAPI(
     title="Database Migration & Validation Platform",
-    version="1.0.0",
+    version="2.0.0",
+    lifespan=lifespan,
 )
 
 
@@ -244,10 +268,11 @@ def get_table_count(table_name: str):
 
 @app.get("/health/databricks")
 def databricks_health():
+    settings = databricks_settings()
     connection = sql.connect(
-        server_hostname=os.getenv("DATABRICKS_HOST"),
-        http_path=os.getenv("DATABRICKS_HTTP_PATH"),
-        access_token=os.getenv("DATABRICKS_TOKEN"),
+        server_hostname=settings["host"],
+        http_path=settings["http_path"],
+        access_token=settings["token"],
     )
 
     try:
@@ -428,3 +453,157 @@ def validation_history():
 @app.get("/api/validation/readiness")
 def migration_readiness():
     return get_migration_readiness()
+
+
+# ============================================================
+# AWS (mocked by moto locally)
+# ============================================================
+
+@app.get("/health/aws")
+def aws_health():
+    result = {"endpoint": aws.endpoint_url() or "aws", "region": aws.region()}
+
+    def check(name, fn):
+        try:
+            result[name] = fn()
+        except Exception as error:
+            result[name] = {"error": f"{type(error).__name__}: {error}"}
+
+    check("s3", lambda: {
+        "bucket": aws.LANDING_BUCKET,
+        "exists": aws.LANDING_BUCKET in [b["Name"] for b in aws.client("s3").list_buckets()["Buckets"]],
+    })
+    check("kinesis", lambda: {
+        "stream": aws.CDC_STREAM,
+        "status": aws.client("kinesis").describe_stream_summary(
+            StreamName=aws.CDC_STREAM)["StreamDescriptionSummary"]["StreamStatus"],
+        "shards": len(aws.client("kinesis").list_shards(StreamName=aws.CDC_STREAM)["Shards"]),
+    })
+    check("dynamodb", lambda: {
+        "table": aws.CHECKPOINT_TABLE,
+        "status": aws.client("dynamodb").describe_table(
+            TableName=aws.CHECKPOINT_TABLE)["Table"]["TableStatus"],
+    })
+    check("secretsmanager", lambda: sorted(
+        s["Name"] for s in aws.client("secretsmanager").list_secrets()["SecretList"]
+    ))
+    return result
+
+
+@app.get("/api/cdc/peek")
+def cdc_peek(limit: int = 20, seconds: int = 300):
+    """Most recent CDC records on the Kinesis stream (debugging aid)."""
+    import datetime as dt
+
+    kinesis = aws.client("kinesis")
+    start = dt.datetime.now(dt.timezone.utc) - dt.timedelta(seconds=seconds)
+    records = []
+    for shard in kinesis.list_shards(StreamName=aws.CDC_STREAM)["Shards"]:
+        iterator = kinesis.get_shard_iterator(
+            StreamName=aws.CDC_STREAM, ShardId=shard["ShardId"],
+            ShardIteratorType="AT_TIMESTAMP", Timestamp=start,
+        )["ShardIterator"]
+        response = kinesis.get_records(ShardIterator=iterator, Limit=1000)
+        for r in response["Records"]:
+            records.append({
+                "shard": shard["ShardId"],
+                "sequence_number": r["SequenceNumber"],
+                "arrived_at": r["ApproximateArrivalTimestamp"],
+                "event": json.loads(r["Data"]),
+            })
+    records.sort(key=lambda r: r["arrived_at"])
+    return {"stream": aws.CDC_STREAM, "count": len(records), "records": records[-limit:]}
+
+
+# ============================================================
+# Migration runs (full load + CDC)
+# ============================================================
+
+class StartMigration(BaseModel):
+    targets: list[str] | None = None
+    workers: int | None = None
+    reset: bool = True
+
+
+@app.get("/api/config")
+def platform_config():
+    return {
+        "targets_available": list(ALL_TARGETS),
+        "targets_default": configured_targets(),
+        "workers_default": default_workers(),
+        "databricks_catalog": databricks_settings()["catalog"],
+    }
+
+
+@app.post("/api/migration/start")
+def start_migration(request: StartMigration):
+    targets = request.targets or configured_targets()
+    unknown = [t for t in targets if t not in ALL_TARGETS]
+    if unknown:
+        raise HTTPException(400, f"Unknown target(s): {', '.join(unknown)}")
+    try:
+        return orchestrator.start_run(targets, request.workers, request.reset)
+    except orchestrator.MigrationError as error:
+        raise HTTPException(409, str(error))
+
+
+@app.post("/api/migration/resume")
+def resume_migration():
+    try:
+        return orchestrator.resume_run()
+    except orchestrator.MigrationError as error:
+        raise HTTPException(409, str(error))
+
+
+@app.post("/api/migration/cancel")
+def cancel_migration():
+    try:
+        return orchestrator.cancel_run()
+    except orchestrator.MigrationError as error:
+        raise HTTPException(409, str(error))
+
+
+@app.get("/api/migration/status")
+def migration_status(run_id: int | None = None):
+    return orchestrator.run_status(run_id)
+
+
+@app.get("/api/migration/runs")
+def migration_runs(limit: int = 10):
+    return orchestrator.run_history(limit)
+
+
+# ============================================================
+# Validation (all targets) and cutover
+# ============================================================
+
+@app.post("/api/validation/run")
+def run_full_validation(targets: str | None = None, sample_size: int | None = None):
+    selected = [t for t in targets.split(",") if t] if targets else None
+    return run_validation(selected, sample_size)
+
+
+@app.post("/api/cutover/start")
+def start_cutover():
+    try:
+        return cutover.start_cutover()
+    except cutover.CutoverError as error:
+        raise HTTPException(409, str(error))
+
+
+@app.post("/api/cutover/rollback")
+def rollback_cutover():
+    try:
+        return cutover.rollback_cutover()
+    except cutover.CutoverError as error:
+        raise HTTPException(409, str(error))
+
+
+@app.get("/api/cutover/status")
+def get_cutover_status():
+    return cutover.cutover_status()
+
+
+@app.get("/api/dashboard")
+def get_dashboard():
+    return dashboard.snapshot()

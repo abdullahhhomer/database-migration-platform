@@ -9,7 +9,7 @@ SELECT
     COUNT(DISTINCT customer_id) AS unique_customers,
     SUM(total_amount) AS total_sales,
     AVG(total_amount) AS average_order_value
-FROM `migration_platform`.`silver`.`silver_orders`
+FROM {{ ref('silver_orders') }}
 GROUP BY
     CAST(order_date AS DATE)
 ORDER BY

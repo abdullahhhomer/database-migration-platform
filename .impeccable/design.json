@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-26T00:00:00Z",
+  "title": "Design System: Migration Control Room",
+  "extensions": {
+    "colorMeta": {
+      "ink": { "role": "neutral", "displayName": "Departure Ink", "canonical": "#0b0d10", "tonalRamp": ["#0a0b0c", "#222427", "#3d4044", "#5b5e62", "#7e8085", "#a2a5a8", "#c9cacd", "#eeeeef"] },
+      "slate": { "role": "neutral", "displayName": "Stub Slate", "canonical": "#1c2127", "tonalRamp": ["#090b0e", "#212429", "#3b4047", "#585e65", "#7b8188", "#a0a5ab", "#c8cbce", "#edeef0"] },
+      "slate-2": { "role": "neutral", "displayName": "Slate Divider", "canonical": "#2a3038", "tonalRamp": ["#090b0e", "#20242a", "#3a4049", "#585e67", "#7a818a", "#9fa5ad", "#c7cbcf", "#edeef0"] },
+      "steel": { "role": "neutral", "displayName": "Steel", "canonical": "#5d636b", "tonalRamp": ["#090b0e", "#212429", "#3b4048", "#585e66", "#7a8189", "#a0a5ac", "#c8cbcf", "#edeef0"] },
+      "steel-light": { "role": "neutral", "displayName": "Light Steel", "canonical": "#9aa0a7", "tonalRamp": ["#0a0b0d", "#212428", "#3b4046", "#595e65", "#7b8188", "#a0a5ab", "#c8cbce", "#eeeeef"] },
+      "panel": { "role": "neutral", "displayName": "Concourse Grey", "canonical": "#e6e8eb", "tonalRamp": ["#0b0b0c", "#232426", "#3e4042", "#5c5e60", "#7e8083", "#a3a5a7", "#cacacc", "#eeeeef"] },
+      "surface": { "role": "neutral", "displayName": "Pass White", "canonical": "#ffffff", "tonalRamp": ["#0b0b0b", "#242424", "#404040", "#5d5d5d", "#808080", "#a4a4a4", "#cacaca", "#eeeeee"] },
+      "hair": { "role": "neutral", "displayName": "Hairline", "canonical": "#d3d6da", "tonalRamp": ["#0a0b0c", "#232426", "#3d4043", "#5b5e61", "#7e8084", "#a2a5a8", "#c9cacc", "#eeeeef"] },
+      "hair-strong": { "role": "neutral", "displayName": "Strong Hairline", "canonical": "#b9bdc3", "tonalRamp": ["#0a0b0d", "#222427", "#3d4045", "#5a5e63", "#7d8086", "#a2a5a9", "#c9cbcd", "#eeeeef"] },
+      "toggle-ink": { "role": "neutral", "displayName": "Toggle Ink", "canonical": "#e9ebee" },
+      "toggle-rule": { "role": "neutral", "displayName": "Toggle Rule", "canonical": "#4a515a" },
+      "rule-on-slate": { "role": "neutral", "displayName": "Rule on Slate", "canonical": "#6b727b" },
+      "alert": { "role": "primary", "displayName": "Gate Alert Yellow", "canonical": "#ffd400", "tonalRamp": ["#160800", "#391d00", "#5f3600", "#7f5600", "#a47a00", "#c2a21b", "#dcca8e", "#f4efdc"] },
+      "alert-hover": { "role": "primary", "displayName": "Lamp Yellow", "canonical": "#ffe14d" },
+      "alert-wash": { "role": "primary", "displayName": "Held-Change Wash", "canonical": "#ffe680", "tonalRamp": ["#120a00", "#312200", "#543c00", "#735b00", "#977f00", "#b7a459", "#d5cba2", "#f2efe2"] },
+      "ok": { "role": "secondary", "displayName": "Signal Green", "canonical": "#1d7448", "tonalRamp": ["#001004", "#002e13", "#004f26", "#156f43", "#419365", "#78b58f", "#b2d4be", "#e7f2ea"] },
+      "ok-wash": { "role": "secondary", "displayName": "Green Wash", "canonical": "#e4f3ea" },
+      "ok-on-slate": { "role": "secondary", "displayName": "Signal Green on Slate", "canonical": "#7fd6a6" },
+      "bad": { "role": "secondary", "displayName": "Signal Red", "canonical": "#b3392a", "tonalRamp": ["#200000", "#4e0000", "#800000", "#a52b1d", "#ce5342", "#e98574", "#f6baaf", "#fde9e6"] },
+      "bad-wash": { "role": "secondary", "displayName": "Red Wash", "canonical": "#fbe6e2" },
+      "bad-deep": { "role": "secondary", "displayName": "Deep Red Ink", "canonical": "#5e1a12" },
+      "bad-on-slate": { "role": "secondary", "displayName": "Signal Red on Slate", "canonical": "#ff9b8c" },
+      "warn": { "role": "secondary", "displayName": "Hold Amber Ink", "canonical": "#7a5200", "tonalRamp": ["#150800", "#371d00", "#5c3600", "#7d5505", "#a27835", "#c19e6d", "#dbc7ab", "#f4ede4"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Run number on the stub only. Condensed gate lettering, tabular numerals." },
+      "display-figure": { "displayName": "Display Figure", "purpose": "Backlog count or load percent in each target segment. Condensed, tabular." },
+      "headline": { "displayName": "Headline", "purpose": "Product name in the ink top bar, uppercase." },
+      "title-segment": { "displayName": "Segment Title", "purpose": "Target names on the pass segments, uppercase." },
+      "title-panel": { "displayName": "Panel Title", "purpose": "Panel heads (Gate board, Proof, Cutover, Timeline...), uppercase." },
+      "title-stage": { "displayName": "Stage Title", "purpose": "Route stop names on the pass, uppercase." },
+      "body": { "displayName": "Body", "purpose": "Explanations, empty states and notices; 62-72ch measure." },
+      "body-sm": { "displayName": "Body Small", "purpose": "Captions, stage notes, readiness details; the 14px floor for mechanic-carrying text." },
+      "button": { "displayName": "Button", "purpose": "Actions, uppercase condensed." },
+      "status": { "displayName": "Status", "purpose": "Outlined state tags, always with an icon." },
+      "label": { "displayName": "Label", "purpose": "Field labels, column headers, setup labels and the NOW tag; 13.5px is the condensed-caps floor." },
+      "data": { "displayName": "Data", "purpose": "Every non-hero figure: facts, LSNs, rows, rates, timings. Tabular." },
+      "data-sm": { "displayName": "Data Small", "purpose": "Inline percents, log times, chip figures, worker toggles." }
+    },
+    "shadows": [
+      { "name": "focus-keyline", "value": "0 0 0 4px #0b0d10", "purpose": "The only box-shadow: an ink keyline behind the 2px alert-yellow focus outline (offset 2px). Not elevation; the system is flat." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "The single easing curve for every transition and the gate-board rerank." },
+      { "name": "rerank", "value": "450ms ease-out (layout position)", "purpose": "Gate-board rows move in place when their rank changes (failed, running by progress, pending, landed newest first)." },
+      { "name": "held-change", "value": "8000ms hold", "purpose": "A changed row, segment or panel holds the alert colour plus a NOW tag for 8s. The first data arrival is not a change." },
+      { "name": "wash-fade", "value": "700ms ease-out", "purpose": "Background colour transition on lit rows, segments and panels." },
+      { "name": "stage-fill", "value": "500ms ease-out", "purpose": "Route stop background when the current stage moves." },
+      { "name": "meter-fill", "value": "900ms ease-out", "purpose": "Load meter width." },
+      { "name": "timeline-bar", "value": "600ms ease-out", "purpose": "Timeline bar left and width." },
+      { "name": "control", "value": "160ms ease-out", "purpose": "Button and toggle colour/border changes." },
+      { "name": "live-pulse", "value": "1.6s steps(2, jump-none) infinite", "purpose": "Square pulse on the live-source chip; a hard blink, not a glow." },
+      { "name": "spinner", "value": "1.1s linear infinite", "purpose": "Running-state loader icon in status tags." },
+      { "name": "reduced-motion", "value": "0.01ms", "purpose": "prefers-reduced-motion collapses every animation and transition." }
+    ],
+    "breakpoints": [
+      { "name": "work-stack", "value": "1500px", "purpose": "Below: work area stacks; side column becomes two columns." },
+      { "name": "lower-two", "value": "1360px", "purpose": "Below: lower row becomes two columns with Timeline spanning both." },
+      { "name": "single", "value": "980px", "purpose": "Below: single column, 16px gutter, horizontal perforation, dashed tear lines between stacked segments, source chip hidden." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single stage-appropriate action. Never more than one, none after a completed cutover.",
+      "html": "<button class=\"ds-btn ds-btn-primary\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\"/><path d=\"m9 12 2 2 4-4\"/></svg><span>Validate</span></button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 8px 16px; cursor: pointer; font: 700 15.5px var(--font-label, 'Barlow Condensed', 'Arial Narrow', sans-serif); text-transform: uppercase; letter-spacing: 0.08em; border: 1.5px solid transparent; border-radius: 0; transition: background-color 160ms cubic-bezier(0.16,1,0.3,1), border-color 160ms cubic-bezier(0.16,1,0.3,1), color 160ms cubic-bezier(0.16,1,0.3,1); } .ds-btn-primary { background: var(--alert, #ffd400); color: var(--ink, #0b0d10); border-color: var(--alert, #ffd400); } .ds-btn-primary:hover { background: #ffe14d; } .ds-btn:focus-visible { outline: 2px solid var(--alert, #ffd400); outline-offset: 2px; box-shadow: 0 0 0 4px var(--ink, #0b0d10); } .ds-btn:disabled { opacity: 0.4; cursor: not-allowed; }"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Every other action in the slate control bar.",
+      "html": "<div class=\"ds-bar\"><button class=\"ds-btn-quiet\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 14 4 9l5-5\"/><path d=\"M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11\"/></svg><span>Roll back</span></button></div>",
+      "css": ".ds-bar { background: var(--slate, #1c2127); padding: 10px 28px; } .ds-btn-quiet { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 8px 16px; cursor: pointer; background: transparent; color: #fff; border: 1.5px solid #6b727b; border-radius: 0; font: 700 15.5px var(--font-label, 'Barlow Condensed', 'Arial Narrow', sans-serif); text-transform: uppercase; letter-spacing: 0.08em; transition: border-color 160ms cubic-bezier(0.16,1,0.3,1); } .ds-btn-quiet:hover { border-color: #fff; } .ds-btn-quiet:focus-visible { outline: 2px solid var(--alert, #ffd400); outline-offset: 2px; box-shadow: 0 0 0 4px var(--ink, #0b0d10); }"
+    },
+    {
+      "name": "Setup Toggle",
+      "kind": "chip",
+      "refersTo": "toggle",
+      "description": "Target and worker-count toggles in the control bar; pressed fills light.",
+      "html": "<div class=\"ds-bar\"><span class=\"ds-setup-label\">Workers</span><button class=\"ds-toggle ds-toggle-num\" aria-pressed=\"false\">1</button><button class=\"ds-toggle ds-toggle-num\" aria-pressed=\"true\">4</button><button class=\"ds-toggle\" aria-pressed=\"true\">Databricks</button></div>",
+      "css": ".ds-bar { display: flex; align-items: center; gap: 6px; background: var(--slate, #1c2127); padding: 10px 28px; } .ds-setup-label { font: 600 13.5px var(--font-label, 'Barlow Condensed', sans-serif); text-transform: uppercase; letter-spacing: 0.1em; color: var(--steel-light, #9aa0a7); margin-right: 4px; } .ds-toggle { padding: 6px 12px; min-height: 34px; cursor: pointer; background: transparent; color: #e9ebee; border: 1.5px solid #4a515a; border-radius: 0; font: 600 15px var(--font-label, 'Barlow Condensed', sans-serif); letter-spacing: 0.04em; text-transform: uppercase; transition: background-color 160ms cubic-bezier(0.16,1,0.3,1), border-color 160ms cubic-bezier(0.16,1,0.3,1); } .ds-toggle-num { min-width: 38px; font-family: var(--font-data, 'JetBrains Mono', monospace); font-size: 14px; } .ds-toggle:hover { border-color: #e9ebee; } .ds-toggle[aria-pressed=\"true\"] { background: #e9ebee; color: var(--ink, #0b0d10); border-color: #e9ebee; } .ds-toggle:focus-visible { outline: 2px solid var(--alert, #ffd400); outline-offset: 2px; box-shadow: 0 0 0 4px var(--ink, #0b0d10); }"
+    },
+    {
+      "name": "Status Tag and NOW Tag",
+      "kind": "chip",
+      "refersTo": "status-tag",
+      "description": "Outlined state tags that always pair colour with a word and an icon; the solid yellow NOW tag marks a held change.",
+      "html": "<div class=\"ds-row\"><span class=\"ds-status ds-status-ok\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/></svg>In sync</span><span class=\"ds-status ds-status-bad\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6\"/><path d=\"m9 9 6 6\"/></svg>Not ready</span><span class=\"ds-status ds-status-run\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"M21 12a9 9 0 1 1-6.219-8.56\"/></svg>Streaming</span><span class=\"ds-now\">Now</span></div>",
+      "css": ".ds-row { display: flex; gap: 8px; align-items: center; background: #fff; padding: 12px; } .ds-status { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; white-space: nowrap; font: 700 14px/1.2 var(--font-label, 'Barlow Condensed', sans-serif); text-transform: uppercase; letter-spacing: 0.07em; border: 1.5px solid currentColor; border-radius: 0; } .ds-status-ok { color: var(--ok, #1d7448); } .ds-status-bad { color: var(--bad, #b3392a); } .ds-status-run { color: var(--ink, #0b0d10); } .ds-now { display: inline-block; padding: 3px 8px; background: var(--alert, #ffd400); color: var(--ink, #0b0d10); font: 700 13.5px/1.2 var(--font-label, 'Barlow Condensed', sans-serif); text-transform: uppercase; letter-spacing: 0.1em; }"
+    },
+    {
+      "name": "Source Chip",
+      "kind": "nav",
+      "refersTo": "source-chip-live",
+      "description": "Top-bar chip for the source database: live (white, blinking square), frozen (alert yellow), unknown (light steel).",
+      "html": "<div class=\"ds-topbar\"><div class=\"ds-chip ds-chip-live\"><span class=\"ds-pulse\"></span><span>Source live</span><span class=\"ds-fig\">3.2 writes/s</span></div><div class=\"ds-chip ds-chip-frozen\"><span class=\"ds-pulse\"></span><span>Source frozen</span><span class=\"ds-fig\">0 writes/s</span></div><div class=\"ds-chip ds-chip-unknown\"><span class=\"ds-pulse\"></span><span>Source unknown</span><span class=\"ds-fig\">– writes/s</span></div></div>",
+      "css": ".ds-topbar { display: flex; flex-wrap: wrap; gap: 12px; background: var(--ink, #0b0d10); padding: 14px 28px; } .ds-chip { display: inline-flex; align-items: center; gap: 10px; padding: 7px 14px; border: 1.5px solid currentColor; font: 600 15px var(--font-label, 'Barlow Condensed', sans-serif); text-transform: uppercase; letter-spacing: 0.08em; } .ds-chip .ds-fig { font: 500 13.5px var(--font-data, 'JetBrains Mono', monospace); font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: 0; color: #fff; } .ds-pulse { width: 9px; height: 9px; background: currentColor; } .ds-chip-live { color: #fff; } .ds-chip-live .ds-pulse { animation: ds-blink 1.6s steps(2, jump-none) infinite; } .ds-chip-frozen { color: var(--alert, #ffd400); } .ds-chip-unknown, .ds-chip-unknown .ds-fig { color: var(--steel-light, #9aa0a7); } @keyframes ds-blink { 50% { opacity: 0.25; } } @media (prefers-reduced-motion: reduce) { .ds-chip-live .ds-pulse { animation: none; } }"
+    },
+    {
+      "name": "Run Pass (stub, perforation, segment)",
+      "kind": "custom",
+      "refersTo": "run-stub",
+      "description": "Signature: slate stub torn from the white pass along a punched perforation with die-cut notches; target segments carry a condensed display figure and mono facts split by hairlines.",
+      "html": "<div class=\"ds-wrap\"><section class=\"ds-pass\"><div class=\"ds-stub\"><span class=\"ds-stub-label\">Run</span><span class=\"ds-stub-number\">#1</span><dl class=\"ds-stub-facts\"><div><dt>Workers</dt><dd>4</dd></div><div><dt>Rows</dt><dd>2.76M</dd></div></dl></div><div class=\"ds-perf\"></div><article class=\"ds-seg\"><h3>Databricks</h3><p class=\"ds-role\">Lakehouse · bronze Delta tables</p><div class=\"ds-figure\"><span class=\"ds-big\">0</span><span class=\"ds-cap\">changes behind the source</span></div><dl class=\"ds-facts\"><div><dt>Lag</dt><dd>0s</dd></div><div><dt>Applied</dt><dd>3,414</dd></div><div><dt>Last LSN</dt><dd>0/31F11248</dd></div></dl></article><article class=\"ds-seg ds-seg-punched\"><h3>SQL Server</h3><p class=\"ds-role\">Stand-in for Amazon RDS</p><div class=\"ds-figure\"><span class=\"ds-big\">0</span><span class=\"ds-cap\">changes behind the source</span></div></article></section></div>",
+      "css": ".ds-wrap { background: var(--panel, #e6e8eb); padding: 20px; } .ds-pass { display: grid; grid-template-columns: 200px 18px 1fr 1fr; background: #fff; border: 1.5px solid var(--ink, #0b0d10); } .ds-stub { background: var(--slate, #1c2127); color: #fff; padding: 18px 20px; display: grid; align-content: start; gap: 10px; } .ds-stub-label { font: 600 14px var(--font-label, 'Barlow Condensed', sans-serif); text-transform: uppercase; letter-spacing: 0.14em; color: var(--steel-light, #9aa0a7); } .ds-stub-number { font: 700 54px/0.95 var(--font-label, 'Barlow Condensed', sans-serif); font-variant-numeric: tabular-nums; } .ds-stub-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin: 0; } .ds-stub-facts dt, .ds-facts dt { font: 600 13.5px var(--font-label, 'Barlow Condensed', sans-serif); text-transform: uppercase; letter-spacing: 0.1em; color: var(--steel-light, #9aa0a7); } .ds-stub-facts dd { margin: 2px 0 0; font: 500 16px var(--font-data, 'JetBrains Mono', monospace); font-variant-numeric: tabular-nums; } .ds-perf { position: relative; background: radial-gradient(circle at 50% 50%, #b9bdc3 3.5px, transparent 4px) 0 14px / 18px 16px repeat-y, #fff; } .ds-perf::before, .ds-perf::after { content: ''; position: absolute; left: 50%; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; background: var(--panel, #e6e8eb); border: 1.5px solid var(--ink, #0b0d10); } .ds-perf::before { top: -11.75px; clip-path: inset(50% -2px -2px -2px); } .ds-perf::after { bottom: -11.75px; clip-path: inset(-2px -2px 50% -2px); } .ds-seg { padding: 16px 20px 18px; display: grid; align-content: start; gap: 12px; min-width: 0; } .ds-seg-punched { padding-left: 34px; background-image: radial-gradient(circle at 50% 50%, #b9bdc3 3px, transparent 3.5px); background-size: 14px 16px; background-repeat: repeat-y; background-position: 4px 8px; } .ds-seg h3 { margin: 0; font: 700 24px/1.1 var(--font-label, 'Barlow Condensed', sans-serif); text-transform: uppercase; letter-spacing: 0.05em; } .ds-role { margin: 2px 0 0; font: 400 13.5px var(--font-ui, 'Inter', sans-serif); color: var(--steel, #5d636b); } .ds-figure { display: flex; align-items: baseline; gap: 12px; } .ds-big { font: 700 52px/1 var(--font-label, 'Barlow Condensed', sans-serif); font-variant-numeric: tabular-nums; } .ds-cap { font: 400 14px var(--font-ui, 'Inter', sans-serif); color: var(--steel, #5d636b); } .ds-facts { display: flex; margin: 0; } .ds-facts > div { padding: 0 18px; border-left: 1px solid #b9bdc3; } .ds-facts > div:first-child { padding-left: 0; border-left: 0; } .ds-facts dt { color: var(--steel, #5d636b); } .ds-facts dd { margin: 0; font: 700 15px var(--font-data, 'JetBrains Mono', monospace); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap; }"
+    },
+    {
+      "name": "Gate Board",
+      "kind": "card",
+      "refersTo": "gate-row-lit",
+      "description": "Signature: ruled panel holding the table x target job table; a changed row holds the wash with a solid yellow status cell and NOW tag.",
+      "html": "<section class=\"ds-panel\"><header class=\"ds-panel-head\"><h2>Gate board · full-load jobs</h2><span class=\"ds-meta\">17/17 landed · 2.76M rows</span></header><table class=\"ds-board\"><thead><tr><th>Status</th><th>Table</th><th>Target</th><th class=\"ds-num\">Rows</th></tr></thead><tbody><tr class=\"ds-lit\"><td><span class=\"ds-status\">Landed</span> <span class=\"ds-now\">Now</span></td><td class=\"ds-t\">customers</td><td class=\"ds-target\">Databricks</td><td class=\"ds-num ds-fig\">50,000</td></tr><tr><td><span class=\"ds-status\">Landed</span></td><td class=\"ds-t\">shipments</td><td class=\"ds-target\">Databricks</td><td class=\"ds-num ds-fig\">250,003</td></tr><tr class=\"ds-failed\"><td><span class=\"ds-status ds-bad\">Failed</span></td><td class=\"ds-t\">returns</td><td class=\"ds-target\">MongoDB</td><td class=\"ds-num ds-fig\">19,652</td></tr></tbody></table></section>",
+      "css": ".ds-panel { background: #fff; border: 1.5px solid var(--ink, #0b0d10); } .ds-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1.5px solid var(--ink, #0b0d10); } .ds-panel-head h2 { margin: 0; font: 700 20px/1.1 var(--font-label, 'Barlow Condensed', sans-serif); text-transform: uppercase; letter-spacing: 0.07em; } .ds-meta { font: 500 13.5px var(--font-data, 'JetBrains Mono', monospace); color: var(--steel, #5d636b); } .ds-board { width: 100%; border-collapse: collapse; } .ds-board th { text-align: left; padding: 10px 14px; font: 600 13.5px var(--font-label, 'Barlow Condensed', sans-serif); text-transform: uppercase; letter-spacing: 0.1em; color: var(--steel, #5d636b); border-bottom: 1px solid #b9bdc3; } .ds-board td { padding: 9px 14px; border-bottom: 1px solid #d3d6da; font: 400 15px var(--font-ui, 'Inter', sans-serif); white-space: nowrap; } .ds-board tr { transition: background-color 700ms cubic-bezier(0.16,1,0.3,1); } .ds-board tr.ds-lit { background: var(--alert-wash, #ffe680); } .ds-board tr.ds-lit td:first-child { background: var(--alert, #ffd400); } .ds-board tr.ds-failed { background: #fbe6e2; } .ds-num { text-align: right; } .ds-fig { font-family: var(--font-data, 'JetBrains Mono', monospace) !important; font-variant-numeric: tabular-nums; } .ds-t { font-weight: 600 !important; } .ds-target { font: 600 15.5px var(--font-label, 'Barlow Condensed', sans-serif) !important; text-transform: uppercase; letter-spacing: 0.05em; } .ds-status { display: inline-flex; padding: 3px 9px; border: 1.5px solid currentColor; color: var(--ok, #1d7448); font: 700 14px/1.2 var(--font-label, 'Barlow Condensed', sans-serif); text-transform: uppercase; letter-spacing: 0.07em; } .ds-bad { color: var(--bad, #b3392a); } .ds-now { display: inline-block; padding: 3px 8px; background: var(--alert, #ffd400); color: var(--ink, #0b0d10); font: 700 13.5px/1.2 var(--font-label, 'Barlow Condensed', sans-serif); text-transform: uppercase; letter-spacing: 0.1em; }"
+    },
+    {
+      "name": "Route Stop",
+      "kind": "custom",
+      "refersTo": "stage-now",
+      "description": "Runbook stage on the pass route strip; the current stage fills solid alert yellow.",
+      "html": "<ol class=\"ds-route\"><li class=\"ds-stop ds-done\"><span class=\"ds-idx\">3</span><span class=\"ds-name\">Catch-up</span><span class=\"ds-state\">Done</span><span class=\"ds-dur\">4m 57s</span><span class=\"ds-note\">3 of 3 in sync</span></li><li class=\"ds-stop ds-now-stop\"><span class=\"ds-idx\">4</span><span class=\"ds-name\">Validate</span><span class=\"ds-state\">Now</span><span class=\"ds-dur\">—</span><span class=\"ds-note\">counts · FKs · sums</span></li><li class=\"ds-stop\"><span class=\"ds-idx\">5</span><span class=\"ds-name\">Freeze + drain</span><span class=\"ds-state\">Next</span><span class=\"ds-dur\">—</span><span class=\"ds-note\">writes live</span></li></ol>",
+      "css": ".ds-route { display: flex; list-style: none; margin: 0; padding: 0; background: #fff; border: 1.5px solid var(--ink, #0b0d10); } .ds-stop { flex: 1; display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'idx name' 'state state' 'dur dur' 'note note'; gap: 2px 8px; padding: 12px 14px; border-right: 1px solid #d3d6da; transition: background-color 500ms cubic-bezier(0.16,1,0.3,1); } .ds-stop:last-child { border-right: 0; } .ds-idx { grid-area: idx; font: 500 14px var(--font-data, 'JetBrains Mono', monospace); color: var(--steel, #5d636b); padding-top: 2px; } .ds-name { grid-area: name; font: 700 18px/1.2 var(--font-label, 'Barlow Condensed', sans-serif); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; } .ds-state { grid-area: state; font: 600 13.5px var(--font-label, 'Barlow Condensed', sans-serif); text-transform: uppercase; letter-spacing: 0.1em; color: var(--steel, #5d636b); } .ds-dur { grid-area: dur; margin-top: 4px; font: 700 20px var(--font-data, 'JetBrains Mono', monospace); font-variant-numeric: tabular-nums; } .ds-note { grid-area: note; font: 400 14px/1.35 var(--font-ui, 'Inter', sans-serif); color: var(--steel, #5d636b); } .ds-done .ds-state { color: var(--ok, #1d7448); } .ds-now-stop { background: var(--alert, #ffd400); } .ds-now-stop .ds-state, .ds-now-stop .ds-idx, .ds-now-stop .ds-note { color: var(--ink, #0b0d10); }"
+    },
+    {
+      "name": "Notice",
+      "kind": "card",
+      "refersTo": "notice-bad",
+      "description": "Full-width ruled bar for unknown/stale API states and action results.",
+      "html": "<div class=\"ds-notice ds-notice-bad\" role=\"alert\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\"/><path d=\"M12 9v4\"/><path d=\"M12 17h.01\"/></svg>Migration API unreachable. Nothing below is known until it answers.</div>",
+      "css": ".ds-notice { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1.5px solid var(--ink, #0b0d10); background: #fff; font: 400 14.5px var(--font-ui, 'Inter', sans-serif); } .ds-notice-bad { background: #fbe6e2; border-color: var(--bad, #b3392a); color: #5e1a12; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Boarding Pass and the Gate Board",
+    "overview": "The migration run is a printed boarding pass: a dark slate stub carrying the run number and its facts, torn off along a punched perforation from a white pass that shows the six-stage route and one tear-off segment per target. Under it, the jobs are a live departure gate board: rows of table × target that rerank in place as they run and land. The system borrows the vernacular of travel ephemera (ink header bar, condensed gate lettering, die-cut notches, punched hole columns) and refuses the category default of a grid of equal stat cards on a grey admin ground.\n\nDensity is high and deliberate: an operator's screen, read as a still frame in a compressed 1080p recording. Everything is flat paper on a cool grey ground, held together by square corners and 1.5px ink rules. Colour is almost entirely absent; one alert yellow announces \"changed just now / act now\", and green and red appear only where a check passed or failed. The signature motion is a gate change: a row reranks, and whatever changed holds yellow with a NOW tag for eight seconds.\n\nThe system is light-only (`color-scheme: light`); the ink top bar and slate stub are the only dark surfaces and are part of the document, not a theme.",
+    "keyCharacteristics": [
+      "Boarding pass + gate board, not stat cards.",
+      "Ink, slate, steel and white do all the structural work; yellow is a signal, never decoration.",
+      "Square corners, 1.5px ink rules, perforations and punched holes instead of shadows.",
+      "Condensed caps for every label and name, mono tabular figures for data, condensed display figures for the hero numbers.",
+      "Every state reads as a still image: unknown, stale, running, held-change, failed and ready."
+    ],
+    "rules": [
+      { "name": "The One Signal Rule", "body": "Yellow means exactly one thing: changed just now, or act now. It never decorates, never fills a chart series, never marks a brand moment beyond the mark itself. At most one yellow primary button is on screen, and none after a cutover completes.", "section": "colors" },
+      { "name": "The Meaning-Only Green Rule", "body": "Green and red carry pass/in-sync and fail meaning only. The live-source chip is white and the producer \"streaming\" state is ink, so green never means \"active\" or \"live\".", "section": "colors" },
+      { "name": "The Never-Colour-Alone Rule", "body": "Every coloured state is paired with a word and, in tags, an icon (check, cross, clock, dashed circle, spinner, pause).", "section": "colors" },
+      { "name": "The Two Figure Voices Rule", "body": "The two hero figures (run number, segment backlog/percent) are set in Barlow Condensed 700 with tabular numerals, matching the gate lettering. Every other number (table cells, LSNs, timings, rates, counts) is JetBrains Mono with tabular numerals. Never set a hero figure in mono or a table figure in the condensed face.", "section": "typography" },
+      { "name": "The Video Floor Rule", "body": "Anything that carries a mechanic (a state, a figure, an instruction) is at least 14px; condensed caps labels are at least 13.5px. The surface is judged from a compressed 1080p recording.", "section": "typography" },
+      { "name": "The Printed Paper Rule", "body": "Surfaces never float. If something needs emphasis it gets the alert wash or an ink rule, never a shadow.", "section": "elevation" },
+      { "name": "The Punched-Hole Exception", "body": "`radial-gradient` is used only to draw perforation and punch holes (3–3.5px dots in strong hairline); it is never used as a colour fade.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do reserve alert yellow (#ffd400) for the current stage, the single primary action, the NOW tag, the lit row's status cell and the frozen-source chip.",
+      "Do hold a change for 8 seconds with the alert wash (#ffe680) plus a NOW tag, and treat the first data arrival as an arrival, not a change.",
+      "Do rerank gate-board rows in place with a 450ms ease-out layout move; fade washes over 700ms.",
+      "Do set the run number and segment hero figures in Barlow Condensed 700 with tabular numerals, and every other figure in JetBrains Mono with tabular numerals.",
+      "Do frame every document with a 1.5px ink rule on square corners, and separate pass parts with perforations, die-cut notches and punched hole columns.",
+      "Do pair every status colour with a word and an icon.",
+      "Do keep mechanic-carrying text at 14px or larger and condensed caps labels at 13.5px or larger.",
+      "Do show unknown and stale states honestly: dashes and \"Source unknown\" when nothing is known, last data plus a stale notice when the API drops later, and disabled controls in both."
+    ],
+    "donts": [
+      "Don't use green for \"live\", \"active\" or \"streaming\"; the live chip is white and streaming is ink.",
+      "Don't add shadows, rounded corners or colour gradients; the only gradient is the punched-hole dot pattern.",
+      "Don't light more than one primary action, or any after a cutover has completed.",
+      "Don't build the surface from a grid of equal stat cards.",
+      "Don't use steel lighter than #5d636b for secondary text on white or the panel ground.",
+      "Don't add motion beyond the reranking, the held highlight, meter/timeline fills, the live pulse and running spinners; all of it collapses under reduced motion."
+    ]
+  }
+}

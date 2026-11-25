@@ -12,8 +12,8 @@ SELECT
     COALESCE(SUM(o.total_amount), 0) AS total_spent,
     COALESCE(AVG(o.total_amount), 0) AS average_order_value,
     MAX(o.order_date) AS last_order_date
-FROM `migration_platform`.`silver`.`silver_customers` AS c
-LEFT JOIN `migration_platform`.`silver`.`silver_orders` AS o
+FROM {{ ref('silver_customers') }} AS c
+LEFT JOIN {{ ref('silver_orders') }} AS o
     ON c.id = o.customer_id
 GROUP BY
     c.id,

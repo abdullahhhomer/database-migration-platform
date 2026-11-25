@@ -1,7 +1,89 @@
+# ==========================================================================
+# Database Migration Platform: live Postgres -> Databricks + SQL Server +
+# MongoDB, with CDC over a mocked AWS (moto: S3, Kinesis, DynamoDB,
+# Secrets Manager). See README.md for the demo script.
+# ==========================================================================
+
+x-app-env: &app-env
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: ${POSTGRES_DB}
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+  # Mocked AWS. Remove AWS_ENDPOINT_URL and use real credentials for real AWS.
+  AWS_ENDPOINT_URL: http://moto:5000
+  AWS_REGION: ${AWS_REGION:-us-east-1}
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  S3_LANDING_BUCKET: ${S3_LANDING_BUCKET:-migration-landing}
+  KINESIS_STREAM: ${KINESIS_STREAM:-cdc-changes}
+  KINESIS_SHARDS: ${KINESIS_SHARDS:-2}
+  DYNAMODB_CHECKPOINT_TABLE: ${DYNAMODB_CHECKPOINT_TABLE:-cdc-checkpoints}
+
+  DATABRICKS_HOST: ${DATABRICKS_HOST:-}
+  DATABRICKS_TOKEN: ${DATABRICKS_TOKEN:-}
+  DATABRICKS_HTTP_PATH: ${DATABRICKS_HTTP_PATH:-}
+  DATABRICKS_CATALOG: ${DATABRICKS_CATALOG:-migration_platform}
+  DATABRICKS_SCHEMA: ${DATABRICKS_SCHEMA:-bronze}
+
+  SQLSERVER_HOST: sqlserver
+  SQLSERVER_PORT: 1433
+  SQLSERVER_USER: sa
+  SQLSERVER_PASSWORD: ${MSSQL_SA_PASSWORD:-Migrat1on_Passw0rd!}
+  SQLSERVER_DATABASE: migration_target
+
+  MONGO_URI: mongodb://${MONGO_USER:-migration}:${MONGO_PASSWORD:-migration_password}@mongodb:27017/?authSource=admin
+  MONGO_DATABASE: migration_target
+
+  MIGRATION_TARGETS: ${MIGRATION_TARGETS:-databricks,sqlserver,mongodb}
+  MIGRATION_WORKERS: ${MIGRATION_WORKERS:-4}
+  VALIDATION_SAMPLE_SIZE: ${VALIDATION_SAMPLE_SIZE:-200}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  PYTHONUNBUFFERED: "1"
+
+x-backend-image: &backend-image
+  build:
+    context: ./backend
+  image: migration-backend:latest
+
+
 services:
 
+  # ------------------------------------------------------------------------
+  # Mocked AWS account
+  # ------------------------------------------------------------------------
+  moto:
+    image: motoserver/moto:latest
+    container_name: migration-aws
+    restart: unless-stopped
+    ports:
+      - "${AWS_MOCK_PORT:-5000}:5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/moto-api/data.json')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Creates the S3 bucket, Kinesis stream, DynamoDB table and secrets.
+  aws-init:
+    <<: *backend-image
+    container_name: migration-aws-init
+    restart: "no"
+    command: ["python", "-m", "app.aws_init"]
+    environment: *app-env
+    depends_on:
+      moto:
+        condition: service_healthy
+
+
+  # ------------------------------------------------------------------------
+  # Source system: PostgreSQL + live application traffic
+  # ------------------------------------------------------------------------
   postgres:
-    image: postgres:17
+    build:
+      context: ./source-db
+    image: migration-postgres:17-wal2json
     container_name: migration-postgres
     restart: unless-stopped
 
@@ -25,6 +107,9 @@ services:
       - max_replication_slots=10
       - -c
       - max_wal_senders=10
+      # Postgres 17.x only loads allow-listed logical decoding plugins.
+      - -c
+      - output_plugin_libraries=pgoutput,test_decoding,wal2json
 
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
@@ -33,24 +118,38 @@ services:
       retries: 10
 
 
-  redis:
-    image: redis:7-alpine
-    container_name: migration-redis
-    restart: unless-stopped
+  # One-off bulk loader (~700k extra rows, ~1M total).
+  # Run before starting a migration:
+  #   docker compose run --rm seeder
+  seeder:
+    image: migration-postgres:17-wal2json
+    profiles: ["seed"]
+    restart: "no"
 
-    ports:
-      - "${REDIS_PORT}:6379"
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
 
     volumes:
-      - redis_data:/data
+      - ./source-db/bulk:/bulk:ro
 
-    command: redis-server --appendonly yes
+    command:
+      - psql
+      - -h
+      - postgres
+      - -U
+      - ${POSTGRES_USER}
+      - -d
+      - ${POSTGRES_DB}
+      - -v
+      - ON_ERROR_STOP=1
+      - -v
+      - scale=${SEED_SCALE:-1}
+      - -f
+      - /bulk/seed_bulk.sql
 
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 
   transaction-generator:
@@ -65,44 +164,152 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      GENERATOR_TPS: ${GENERATOR_TPS:-1}
+      PYTHONUNBUFFERED: "1"
 
     depends_on:
       postgres:
         condition: service_healthy
 
 
-  backend:
+  # ------------------------------------------------------------------------
+  # CDC producer: Postgres WAL (wal2json) -> Kinesis
+  # ------------------------------------------------------------------------
+  cdc-worker:
     build:
-      context: ./backend
+      context: ./cdc-worker
+    container_name: migration-cdc-worker
+    restart: unless-stopped
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      aws-init:
+        condition: service_completed_successfully
+
+
+  # ------------------------------------------------------------------------
+  # Targets
+  # ------------------------------------------------------------------------
+  # Stand-in for Amazon RDS for SQL Server
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: migration-sqlserver
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-Migrat1on_Passw0rd!}
+      MSSQL_MEMORY_LIMIT_MB: ${MSSQL_MEMORY_LIMIT_MB:-2048}
+    ports:
+      - "${SQLSERVER_PORT:-1433}:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -C -b -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  # Stand-in for Amazon DocumentDB (MongoDB-compatible)
+  mongodb:
+    image: mongo:7
+    container_name: migration-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-migration}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-migration_password}
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+
+  # ------------------------------------------------------------------------
+  # Migration engine (API + full load orchestrator + validation + cutover)
+  # ------------------------------------------------------------------------
+  backend:
+    <<: *backend-image
     container_name: migration-backend
     restart: unless-stopped
-
-    environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-
-      DATABRICKS_HOST: ${DATABRICKS_HOST}
-      DATABRICKS_TOKEN: ${DATABRICKS_TOKEN}
-      DATABRICKS_HTTP_PATH: ${DATABRICKS_HTTP_PATH}
-      DATABRICKS_CATALOG: ${DATABRICKS_CATALOG}
-      DATABRICKS_SCHEMA: ${DATABRICKS_SCHEMA}
-
+    environment: *app-env
     ports:
       - "${BACKEND_PORT}:8000"
-
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
     depends_on:
       postgres:
         condition: service_healthy
+      aws-init:
+        condition: service_completed_successfully
+      sqlserver:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
 
 
+  # CDC appliers: Kinesis -> each target (one consumer per target)
+  cdc-applier-databricks:
+    <<: *backend-image
+    container_name: migration-cdc-applier-databricks
+    restart: unless-stopped
+    command: ["python", "-m", "app.cdc.applier", "--target", "databricks"]
+    environment: *app-env
+    depends_on: &applier-deps
+      backend:
+        condition: service_healthy
+
+  cdc-applier-sqlserver:
+    <<: *backend-image
+    container_name: migration-cdc-applier-sqlserver
+    restart: unless-stopped
+    command: ["python", "-m", "app.cdc.applier", "--target", "sqlserver"]
+    environment: *app-env
+    depends_on: *applier-deps
+
+  cdc-applier-mongodb:
+    <<: *backend-image
+    container_name: migration-cdc-applier-mongodb
+    restart: unless-stopped
+    command: ["python", "-m", "app.cdc.applier", "--target", "mongodb"]
+    environment: *app-env
+    depends_on: *applier-deps
+
+
+  # ------------------------------------------------------------------------
+  # Dashboard: http://localhost:3000
+  # ------------------------------------------------------------------------
+  # React + Vite build, served by nginx (multi-stage frontend/Dockerfile)
+  frontend:
+    build:
+      context: ./frontend
+    image: migration-frontend:latest
+    container_name: migration-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - backend
+
+
+  # Tool container, not a long-running service. Run on demand:
+  #   docker compose run --rm dbt dbt build --profiles-dir .
   dbt:
     build:
       context: ./dbt
     container_name: migration-dbt
-    restart: unless-stopped
+    profiles: ["tools"]
+    restart: "no"
 
     env_file:
       - .env
@@ -116,4 +323,5 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
+  sqlserver_data:
+  mongo_data:

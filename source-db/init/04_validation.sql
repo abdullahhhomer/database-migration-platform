@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS validation_runs (
 CREATE TABLE IF NOT EXISTS validation_results (
     id BIGSERIAL PRIMARY KEY,
     run_id BIGINT NOT NULL REFERENCES validation_runs(id),
+    target VARCHAR(30) NOT NULL DEFAULT 'databricks',
     check_type VARCHAR(50) NOT NULL DEFAULT 'count',
     check_name VARCHAR(255) NOT NULL,
     table_name VARCHAR(100),

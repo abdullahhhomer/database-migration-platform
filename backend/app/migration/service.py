@@ -1,226 +1,169 @@
-import psycopg2
+"""
+Full-load job tracking and the per-job copy loop.
+
+A job copies one source table into one target, in keyset batches
+(WHERE id > last_id ORDER BY id). After every batch the job's last_id is
+checkpointed, so an interrupted job resumes where it stopped: rows past the
+checkpoint are removed from the target first, then copying continues.
+"""
+
+import datetime as dt
 
 from app.migration.reader import get_db_connection, read_table_batch
-from app.migration.writer import insert_rows
+from app.migration.schema import source_count
+from app.targets import get_target
 
 
-def get_or_create_job(table_name: str, batch_size: int):
+def _row_to_job(row, names) -> dict:
+    return dict(zip(names, row))
+
+
+def create_job(run_id: int | None, table_name: str, target: str, batch_size: int) -> dict:
+    total_rows = source_count(table_name)
     connection = get_db_connection()
+    try:
+        with connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO migration_jobs (
+                        run_id, table_name, target, status, batch_size,
+                        total_rows, migrated_rows, last_id
+                    )
+                    VALUES (%s, %s, %s, 'pending', %s, %s, 0, 0)
+                    RETURNING *
+                    """,
+                    (run_id, table_name, target, batch_size, total_rows),
+                )
+                return _row_to_job(cursor.fetchone(), [d[0] for d in cursor.description])
+    finally:
+        connection.close()
 
+
+def get_or_create_job(table_name: str, batch_size: int, target: str = "databricks") -> dict:
+    """Legacy single-table API: resumes an unfinished standalone job or creates one."""
+    connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT
-                    id,
-                    status,
-                    batch_size,
-                    total_rows,
-                    migrated_rows,
-                    last_id
+                SELECT *
                 FROM migration_jobs
                 WHERE table_name = %s
-                  AND status IN ('pending', 'running')
+                  AND target = %s
+                  AND run_id IS NULL
+                  AND status IN ('pending', 'running', 'failed')
                 ORDER BY id DESC
                 LIMIT 1
                 """,
-                (table_name,),
+                (table_name, target),
             )
-
-            job = cursor.fetchone()
-
-            if job:
-                connection.commit()
-                return {
-                    "id": job[0],
-                    "status": job[1],
-                    "batch_size": job[2],
-                    "total_rows": job[3],
-                    "migrated_rows": job[4],
-                    "last_id": job[5],
-                }
-
-            cursor.execute(
-                """
-                SELECT COUNT(*)
-                FROM information_schema.tables
-                WHERE table_schema = 'public'
-                  AND table_name = %s
-                """,
-                (table_name,),
-            )
-
-            if cursor.fetchone()[0] == 0:
-                raise ValueError(
-                    f"Source table '{table_name}' does not exist"
-                )
-
-            cursor.execute(
-                f'SELECT COUNT(*) FROM "{table_name}"'
-            )
-            total_rows = cursor.fetchone()[0]
-
-            cursor.execute(
-                """
-                INSERT INTO migration_jobs (
-                    table_name,
-                    status,
-                    batch_size,
-                    total_rows,
-                    migrated_rows,
-                    last_id,
-                    started_at
-                )
-                VALUES (%s, 'running', %s, %s, 0, 0, CURRENT_TIMESTAMP)
-                RETURNING id
-                """,
-                (table_name, batch_size, total_rows),
-            )
-
-            job_id = cursor.fetchone()[0]
-            connection.commit()
-
-            return {
-                "id": job_id,
-                "status": "running",
-                "batch_size": batch_size,
-                "total_rows": total_rows,
-                "migrated_rows": 0,
-                "last_id": 0,
-            }
-
-    except Exception:
-        connection.rollback()
-        raise
-
+            row = cursor.fetchone()
+            if row:
+                return _row_to_job(row, [d[0] for d in cursor.description])
     finally:
         connection.close()
 
-
-def update_job(
-    job_id: int,
-    last_id: int,
-    migrated_rows: int,
-):
-    connection = get_db_connection()
-
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                UPDATE migration_jobs
-                SET
-                    last_id = %s,
-                    migrated_rows = %s,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = %s
-                """,
-                (last_id, migrated_rows, job_id),
-            )
-
-        connection.commit()
-
-    finally:
-        connection.close()
+    return create_job(None, table_name, target, batch_size)
 
 
-def complete_job(job_id: int):
-    connection = get_db_connection()
-
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                UPDATE migration_jobs
-                SET
-                    status = 'completed',
-                    completed_at = CURRENT_TIMESTAMP,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = %s
-                """,
-                (job_id,),
-            )
-
-        connection.commit()
-
-    finally:
-        connection.close()
-
-
-def fail_job(job_id: int, error_message: str):
-    connection = get_db_connection()
-
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                UPDATE migration_jobs
-                SET
-                    status = 'failed',
-                    error_message = %s,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = %s
-                """,
-                (error_message, job_id),
-            )
-
-        connection.commit()
-
-    finally:
-        connection.close()
-
-
-def migrate_table(
-    table_name: str,
-    batch_size: int = 1000,
-):
-    job = get_or_create_job(
-        table_name=table_name,
-        batch_size=batch_size,
+def mark_job_running(job_id: int) -> None:
+    _update(
+        job_id,
+        "status = 'running', error_message = NULL, "
+        "started_at = COALESCE(started_at, CURRENT_TIMESTAMP)",
     )
 
+
+def update_job(job_id: int, last_id: int, migrated_rows: int) -> None:
+    _update(job_id, "last_id = %s, migrated_rows = %s", (last_id, migrated_rows))
+
+
+def complete_job(job_id: int) -> None:
+    _update(job_id, "status = 'completed', completed_at = CURRENT_TIMESTAMP")
+
+
+def fail_job(job_id: int, error_message: str) -> None:
+    _update(job_id, "status = 'failed', error_message = %s", (error_message[:2000],))
+
+
+def _update(job_id: int, assignments: str, params: tuple = ()) -> None:
+    connection = get_db_connection()
+    try:
+        with connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    f"UPDATE migration_jobs SET {assignments}, "
+                    "updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+                    (*params, job_id),
+                )
+    finally:
+        connection.close()
+
+
+def run_job(job: dict, target=None, should_stop=lambda: False) -> dict:
+    """
+    Copies one table into one target. Re-entrant: resuming a job first
+    removes rows past its checkpoint from the target, then continues.
+    """
+    owns_target = target is None
+    target = target or get_target(job["target"])
+
     job_id = job["id"]
-    last_id = job["last_id"]
-    total_migrated = job["migrated_rows"]
+    table = job["table_name"]
+    last_id = int(job["last_id"])
+    migrated = int(job["migrated_rows"])
+    run_id = job.get("run_id") or 0
+    started = dt.datetime.now()
 
     try:
-        while True:
-            batch = read_table_batch(
-                table_name=table_name,
-                last_id=last_id,
-                batch_size=batch_size,
-            )
+        mark_job_running(job_id)
 
+        if last_id > 0 or migrated > 0:
+            target.truncate_after(table, last_id)
+
+        while True:
+            if should_stop():
+                fail_job(job_id, "cancelled")
+                return {"job_id": job_id, "status": "cancelled"}
+
+            batch = read_table_batch(table, last_id=last_id, batch_size=target.batch_size)
             if batch["count"] == 0:
                 complete_job(job_id)
+                break
 
-                return {
-                    "status": "completed",
-                    "job_id": job_id,
-                    "table": table_name,
-                    "total_rows": job["total_rows"],
-                    "migrated_rows": total_migrated,
-                    "last_id": last_id,
-                }
+            target.load_batch(table, batch["columns"], batch["rows"], run_id)
 
-            insert_rows(
-                table_name=table_name,
-                columns=batch["columns"],
-                rows=batch["rows"],
-            )
-
-            total_migrated += batch["count"]
+            migrated += batch["count"]
             last_id = batch["next_last_id"]
+            update_job(job_id, last_id=last_id, migrated_rows=migrated)
 
-            update_job(
-                job_id=job_id,
-                last_id=last_id,
-                migrated_rows=total_migrated,
-            )
+        elapsed = (dt.datetime.now() - started).total_seconds()
+        return {
+            "job_id": job_id,
+            "status": "completed",
+            "table": table,
+            "target": job["target"],
+            "migrated_rows": migrated,
+            "last_id": last_id,
+            "seconds": round(elapsed, 2),
+        }
 
     except Exception as error:
-        fail_job(
-            job_id=job_id,
-            error_message=str(error),
-        )
+        fail_job(job_id, f"{type(error).__name__}: {error}")
         raise
+
+    finally:
+        if owns_target:
+            target.close()
+
+
+def migrate_table(table_name: str, batch_size: int = 1000, target: str = "databricks") -> dict:
+    """Legacy endpoint: migrate a single table into a single target."""
+    target_impl = get_target(target)
+    try:
+        target_impl.prepare(reset=False)
+        job = get_or_create_job(table_name, batch_size, target)
+        return run_job(job, target=target_impl)
+    finally:
+        target_impl.close()

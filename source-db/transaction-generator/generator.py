@@ -14,6 +14,10 @@ DB_CONFIG = {
     "password": os.getenv("POSTGRES_PASSWORD", "migration_password"),
 }
 
+# Average transactions per second. Each wait is randomised around 1 / TPS
+# so the traffic looks organic rather than metronomic.
+TPS = max(float(os.getenv("GENERATOR_TPS", "1")), 0.01)
+
 
 def get_connection():
     return psycopg2.connect(**DB_CONFIG)
@@ -146,12 +150,37 @@ def delete_return(cursor):
     )
 
 
-def run_transaction():
+def is_frozen(cursor) -> bool:
+    """
+    The cutover runbook sets migration_control.writes_frozen to stop the
+    "application" from writing, so CDC can drain and validation can run
+    against a quiet source.
+    """
+    cursor.execute(
+        "SELECT to_regclass('public.migration_control') IS NOT NULL"
+    )
+
+    if not cursor.fetchone()[0]:
+        return False
+
+    cursor.execute(
+        "SELECT writes_frozen FROM migration_control WHERE id = 1"
+    )
+    row = cursor.fetchone()
+
+    return bool(row and row[0])
+
+
+def run_transaction() -> bool:
+    """Runs one random transaction. Returns False if writes are frozen."""
     connection = get_connection()
 
     try:
         with connection:
             with connection.cursor() as cursor:
+                if is_frozen(cursor):
+                    return False
+
                 operations = [
                     update_customer,
                     update_product,
@@ -174,20 +203,34 @@ def run_transaction():
                     operation(cursor)
                     print(f"[{operation.__name__.replace('_', ' ').upper()}]")
 
+        return True
+
     finally:
         connection.close()
 
 
 def main():
-    print("Starting PostgreSQL transaction generator...")
+    print(f"Starting PostgreSQL transaction generator (~{TPS:g} tx/s)...")
     print("Press Ctrl+C to stop.")
+
+    frozen = False
 
     while True:
         try:
-            run_transaction()
+            ran = run_transaction()
 
-            # Keep the workload realistic rather than hammering PostgreSQL.
-            time.sleep(random.uniform(1.0, 3.0))
+            if not ran:
+                if not frozen:
+                    print("[FROZEN] Writes are frozen for cutover; pausing.", flush=True)
+                    frozen = True
+                time.sleep(1)
+                continue
+
+            if frozen:
+                print("[RESUMED] Writes unfrozen; generating traffic again.", flush=True)
+                frozen = False
+
+            time.sleep(random.uniform(0.5, 1.5) / TPS)
 
         except psycopg2.Error as error:
             print(f"[DATABASE ERROR] {error}")

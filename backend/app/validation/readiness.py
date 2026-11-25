@@ -1,88 +1,84 @@
-from app.validation.validator import get_db_connection
+"""
+Cutover readiness: every condition must hold before the application can be
+pointed at the new systems.
+"""
+
+from app.control import fetch_all_dicts, get_control, latest_run, run_targets
+from app.migration.reader import get_db_connection
+from app.validation.validator import latest_validation
 
 
-def get_migration_readiness():
+def _cdc_status() -> dict[str, dict]:
     connection = get_db_connection()
-
     try:
         with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT
-                    id,
-                    status,
-                    total_checks,
-                    passed_checks,
-                    failed_checks,
-                    completed_at
-                FROM validation_runs
-                ORDER BY id DESC
-                LIMIT 1
-                """
-            )
-
-            run = cursor.fetchone()
-
-            if not run:
-                return {
-                    "status": "not_ready",
-                    "reason": "No validation run exists",
-                    "checks": [],
-                }
-
-            run_id = run[0]
-            validation_status = run[1]
-            total_checks = run[2]
-            passed_checks = run[3]
-            failed_checks = run[4]
-            completed_at = run[5]
-
-            cursor.execute(
-                """
-                SELECT
-                    table_name,
-                    source_count,
-                    target_count,
-                    count_difference,
-                    status
-                FROM validation_results
-                WHERE run_id = %s
-                ORDER BY id
-                """,
-                (run_id,),
-            )
-
-            results = cursor.fetchall()
-
-            checks = []
-
-            for row in results:
-                checks.append(
-                    {
-                        "table_name": row[0],
-                        "source_count": row[1],
-                        "target_count": row[2],
-                        "count_difference": row[3],
-                        "status": row[4],
-                    }
-                )
-
-            ready = (
-                validation_status == "passed"
-                and failed_checks == 0
-                and total_checks > 0
-            )
-
-            return {
-                "status": "ready" if ready else "not_ready",
-                "validation_run_id": run_id,
-                "validation_status": validation_status,
-                "total_checks": total_checks,
-                "passed_checks": passed_checks,
-                "failed_checks": failed_checks,
-                "completed_at": completed_at,
-                "checks": checks,
-            }
-
+            cursor.execute("SELECT * FROM cdc_status")
+            return {r["target"]: r for r in fetch_all_dicts(cursor)}
     finally:
         connection.close()
+
+
+def get_migration_readiness() -> dict:
+    control = get_control()
+    run = latest_run()
+    targets = run_targets(run)
+    cdc = _cdc_status()
+    validation = latest_validation()
+    token = control.get("heartbeat_token")
+
+    conditions = []
+
+    conditions.append({
+        "name": "Full load completed",
+        "ok": bool(run) and run["status"] == "full_load_completed",
+        "detail": f"run {run['id']}: {run['status']}" if run else "no migration run yet",
+    })
+
+    conditions.append({
+        "name": "Application writes frozen",
+        "ok": bool(control.get("writes_frozen")),
+        "detail": "frozen" if control.get("writes_frozen") else "source is still taking writes",
+    })
+
+    for target in targets:
+        status = cdc.get(target, {})
+        drained = bool(token) and status.get("last_heartbeat") == token
+        conditions.append({
+            "name": f"CDC drained: {target}",
+            "ok": drained,
+            "detail": status.get("state") or "no applier status",
+        })
+
+    if validation:
+        covered = set((validation.get("targets") or "").split(","))
+        valid = (
+            validation["status"] == "passed"
+            and bool(validation.get("writes_frozen"))
+            and run is not None
+            and validation.get("migration_run_id") == run["id"]
+            and set(targets) <= covered
+        )
+        detail = (
+            f"validation #{validation['run_id']}: {validation['passed_checks']}/"
+            f"{validation['total_checks']} checks passed"
+            + ("" if validation.get("writes_frozen") else " (taken while source was live)")
+        )
+    else:
+        valid, detail = False, "no validation run yet"
+
+    conditions.append({"name": "Validation passed on a frozen source", "ok": valid, "detail": detail})
+
+    ready = bool(conditions) and all(c["ok"] for c in conditions)
+
+    failed_checks = []
+    if validation:
+        failed_checks = [r for r in validation["results"] if r["status"] != "passed"][:50]
+
+    return {
+        "status": "ready" if ready else "not_ready",
+        "cutover_status": control.get("cutover_status"),
+        "migration_run_id": run["id"] if run else None,
+        "validation_run_id": validation["run_id"] if validation else None,
+        "conditions": conditions,
+        "failed_checks": failed_checks,
+    }

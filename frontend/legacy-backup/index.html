@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Migration Control Room</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Migration Control Room</h1>
+      <p class="subtitle">Live PostgreSQL &rarr; Databricks &middot; SQL Server &middot; MongoDB, over a mocked AWS (S3 &middot; Kinesis &middot; DynamoDB &middot; Secrets Manager)</p>
+    </div>
+    <div class="topbar-status">
+      <span id="pill-writes" class="pill">writes: &hellip;</span>
+      <span id="pill-cutover" class="pill">cutover: &hellip;</span>
+      <span id="updated" class="muted small">connecting&hellip;</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="card controls">
+      <div class="control-group">
+        <h2>1 &middot; Migrate</h2>
+        <div id="target-picker" class="checks"></div>
+        <label class="inline">Parallel workers
+          <input id="workers" type="number" min="1" max="16" value="4">
+        </label>
+        <div class="buttons">
+          <button id="btn-start" class="primary">Start migration</button>
+          <button id="btn-resume">Resume</button>
+          <button id="btn-cancel">Cancel</button>
+        </div>
+      </div>
+      <div class="control-group">
+        <h2>2 &middot; Validate</h2>
+        <p class="muted small">Compares every target with the source: counts, foreign keys, money checksums, duplicate keys and sampled rows.</p>
+        <div class="buttons">
+          <button id="btn-validate">Validate now</button>
+        </div>
+      </div>
+      <div class="control-group">
+        <h2>3 &middot; Cut over</h2>
+        <p class="muted small">Freeze writes &rarr; drain CDC &rarr; validate &rarr; enforce FKs &rarr; ready.</p>
+        <div class="buttons">
+          <button id="btn-cutover" class="primary">Start cutover</button>
+          <button id="btn-rollback">Rollback</button>
+        </div>
+      </div>
+      <div id="message" class="message" hidden></div>
+    </section>
+
+    <section class="pipeline" id="pipeline"></section>
+
+    <section class="grid-2">
+      <div class="card">
+        <div class="card-head">
+          <h2>Full load</h2>
+          <span id="timing" class="muted small"></span>
+        </div>
+        <div id="jobs"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>Timeline</h2>
+          <span class="muted small">when each table &times; target job ran</span>
+        </div>
+        <div id="timeline"></div>
+      </div>
+    </section>
+
+    <section class="grid-2">
+      <div class="card">
+        <div class="card-head">
+          <h2>Validation</h2>
+          <span id="validation-meta" class="muted small"></span>
+        </div>
+        <div id="validation"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>Cutover readiness</h2>
+          <span id="readiness-status" class="pill"></span>
+        </div>
+        <ul id="readiness" class="conditions"></ul>
+        <h3>Runbook log</h3>
+        <ol id="cutover-log" class="log"></ol>
+      </div>
+    </section>
+
+    <section class="grid-2">
+      <div class="card">
+        <div class="card-head">
+          <h2>S3 landing zone</h2>
+          <span id="landing-meta" class="muted small"></span>
+        </div>
+        <div id="landing"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>Run history</h2>
+          <span class="muted small">compare sequential vs parallel</span>
+        </div>
+        <div id="history"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
